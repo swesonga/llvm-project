@@ -16,6 +16,9 @@ exit /b 1
 
 :begin
 
+set notests=false
+if "%2"=="notests" set "notests=true"
+
 REM Note:
 REM   7zip versions 21.x and higher will try to extract the symlinks in
 REM   llvm's git archive, which requires running as administrator.
@@ -78,7 +81,7 @@ cd %build_dir%
 echo Checking out %revision%
 curl -L https://github.com/llvm/llvm-project/archive/%revision%.zip -o src.zip || exit /b 1
 7z x src.zip || exit /b 1
-mv llvm-project-* llvm-project || exit /b 1
+move llvm-project-* llvm-project || exit /b 1
 
 curl -O https://gitlab.gnome.org/GNOME/libxml2/-/archive/v2.9.12/libxml2-v2.9.12.tar.gz || exit /b 1
 tar zxf libxml2-v2.9.12.tar.gz
@@ -88,7 +91,7 @@ REM Common flags for both 32/64 builds.
 set common_cmake_flags=^
   -DCMAKE_BUILD_TYPE=Release ^
   -DLLVM_ENABLE_ASSERTIONS=OFF ^
-  -DLLVM_INSTALL_TOOLCHAIN_ONLY=ON ^
+  -DLLVM_INSTALL_TOOLCHAIN_ONLY=OFF ^
   -DLLVM_BUILD_LLVM_C_DYLIB=ON ^
   -DCMAKE_INSTALL_UCRT_LIBRARIES=ON ^
   -DPython3_FIND_REGISTRY=NEVER ^
@@ -143,16 +146,19 @@ set cmake_flags=^
   -DLLDB_TEST_COMPILER=%stage0_bin_dir%/clang.exe ^
   -DPYTHON_HOME=%PYTHONHOME% ^
   -DPython3_ROOT_DIR=%PYTHONHOME% ^
+  -DLIBXML2_INCLUDE_DIR=%libxmldir%/include/libxml2 ^
   -DLIBXML2_INCLUDE_DIRS=%libxmldir%/include/libxml2 ^
   -DLIBXML2_LIBRARIES=%libxmldir%/lib/libxml2s.lib
 
 cmake -GNinja %cmake_flags% ..\llvm-project\llvm || exit /b 1
 ninja || ninja || ninja || exit /b 1
-REM ninja check-llvm || ninja check-llvm || ninja check-llvm || exit /b 1
-REM ninja check-clang || ninja check-clang || ninja check-clang || exit /b 1
-ninja check-lld || ninja check-lld || ninja check-lld || exit /b 1
-ninja check-sanitizer || ninja check-sanitizer || ninja check-sanitizer || exit /b 1
-REM ninja check-clang-tools || ninja check-clang-tools || ninja check-clang-tools || exit /b 1
+if not %notests% == true (
+    REM ninja check-llvm || ninja check-llvm || ninja check-llvm || exit /b 1
+    REM ninja check-clang || ninja check-clang || ninja check-clang || exit /b 1
+    ninja check-lld || ninja check-lld || ninja check-lld || exit /b 1
+    ninja check-sanitizer || ninja check-sanitizer || ninja check-sanitizer || exit /b 1
+    REM ninja check-clang-tools || ninja check-clang-tools || ninja check-clang-tools || exit /b 1
+)
 cd..
 
 REM CMake expects the paths that specifies the compiler and linker to be
@@ -170,11 +176,13 @@ mkdir build32
 cd build32
 cmake -GNinja %cmake_flags% ..\llvm-project\llvm || exit /b 1
 ninja || ninja || ninja || exit /b 1
-REM ninja check-llvm || ninja check-llvm || ninja check-llvm || exit /b 1
-REM ninja check-clang || ninja check-clang || ninja check-clang || exit /b 1
-ninja check-lld || ninja check-lld || ninja check-lld || exit /b 1
-ninja check-sanitizer || ninja check-sanitizer || ninja check-sanitizer || exit /b 1
-REM ninja check-clang-tools || ninja check-clang-tools || ninja check-clang-tools || exit /b 1
+if not %notests% == true (
+    REM ninja check-llvm || ninja check-llvm || ninja check-llvm || exit /b 1
+    REM ninja check-clang || ninja check-clang || ninja check-clang || exit /b 1
+    ninja check-lld || ninja check-lld || ninja check-lld || exit /b 1
+    ninja check-sanitizer || ninja check-sanitizer || ninja check-sanitizer || exit /b 1
+    REM ninja check-clang-tools || ninja check-clang-tools || ninja check-clang-tools || exit /b 1
+)
 ninja package || exit /b 1
 cd ..
 
@@ -212,17 +220,20 @@ set cmake_flags=^
   -DLLDB_TEST_COMPILER=%stage0_bin_dir%/clang.exe ^
   -DPYTHON_HOME=%PYTHONHOME% ^
   -DPython3_ROOT_DIR=%PYTHONHOME% ^
+  -DLIBXML2_INCLUDE_DIR=%libxmldir%/include/libxml2 ^
   -DLIBXML2_INCLUDE_DIRS=%libxmldir%/include/libxml2 ^
   -DLIBXML2_LIBRARIES=%libxmldir%/lib/libxml2s.lib
 
 cmake -GNinja %cmake_flags% ..\llvm-project\llvm || exit /b 1
 ninja || ninja || ninja || exit /b 1
-ninja check-llvm || ninja check-llvm || ninja check-llvm || exit /b 1
-ninja check-clang || ninja check-clang || ninja check-clang || exit /b 1
-ninja check-lld || ninja check-lld || ninja check-lld || exit /b 1
-ninja check-sanitizer || ninja check-sanitizer || ninja check-sanitizer || exit /b 1
-ninja check-clang-tools || ninja check-clang-tools || ninja check-clang-tools || exit /b 1
-ninja check-clangd || ninja check-clangd || ninja check-clangd || exit /b 1
+if not %notests% == true (
+    ninja check-llvm || ninja check-llvm || ninja check-llvm || exit /b 1
+    ninja check-clang || ninja check-clang || ninja check-clang || exit /b 1
+    ninja check-lld || ninja check-lld || ninja check-lld || exit /b 1
+    ninja check-sanitizer || ninja check-sanitizer || ninja check-sanitizer || exit /b 1
+    ninja check-clang-tools || ninja check-clang-tools || ninja check-clang-tools || exit /b 1
+    ninja check-clangd || ninja check-clangd || ninja check-clangd || exit /b 1
+)
 cd..
 
 REM CMake expects the paths that specifies the compiler and linker to be
@@ -240,12 +251,14 @@ mkdir build64
 cd build64
 cmake -GNinja %cmake_flags% ..\llvm-project\llvm || exit /b 1
 ninja || ninja || ninja || exit /b 1
-ninja check-llvm || ninja check-llvm || ninja check-llvm || exit /b 1
-ninja check-clang || ninja check-clang || ninja check-clang || exit /b 1
-ninja check-lld || ninja check-lld || ninja check-lld || exit /b 1
-ninja check-sanitizer || ninja check-sanitizer || ninja check-sanitizer || exit /b 1
-ninja check-clang-tools || ninja check-clang-tools || ninja check-clang-tools || exit /b 1
-ninja check-clangd || ninja check-clangd || ninja check-clangd || exit /b 1
+if not %notests% == true (
+    ninja check-llvm || ninja check-llvm || ninja check-llvm || exit /b 1
+    ninja check-clang || ninja check-clang || ninja check-clang || exit /b 1
+    ninja check-lld || ninja check-lld || ninja check-lld || exit /b 1
+    ninja check-sanitizer || ninja check-sanitizer || ninja check-sanitizer || exit /b 1
+    ninja check-clang-tools || ninja check-clang-tools || ninja check-clang-tools || exit /b 1
+    ninja check-clangd || ninja check-clangd || ninja check-clangd || exit /b 1
+)
 ninja package || exit /b 1
 cd ..
 
