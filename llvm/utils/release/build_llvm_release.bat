@@ -148,7 +148,7 @@ cd %build_dir% || exit /b 1
 echo Checking out %revision%
 curl -L https://github.com/llvm/llvm-project/archive/%revision%.zip -o src.zip || exit /b 1
 7z x src.zip || exit /b 1
-mv llvm-project-* llvm-project || exit /b 1
+move llvm-project-* llvm-project || exit /b 1
 
 curl -O https://gitlab.gnome.org/GNOME/libxml2/-/archive/v2.9.12/libxml2-v2.9.12.tar.gz || exit /b 1
 tar zxf libxml2-v2.9.12.tar.gz
